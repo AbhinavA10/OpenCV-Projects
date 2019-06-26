@@ -5,32 +5,36 @@
  * https://www.myzhar.com/blog/tutorials/tutorial-opencv-ball-tracker-using-kalman-filter/
  ******************************************/
 
-// Module "core"
 #include <opencv2/core/core.hpp>
-
-// Module "highgui"
-#include <opencv2/highgui/highgui.hpp>
-
-// Module "imgproc"
-#include <opencv2/imgproc/imgproc.hpp>
-
-// Module "video"
+#include <opencv2/highgui/highgui.hpp> // trackbar
+#include <opencv2/imgproc/imgproc.hpp> // colour conversion and blur
 #include <opencv2/video/video.hpp>
 
-// Output
 #include <iostream>
-
-// Vector
 #include <vector>
 
 using namespace std;
 
-// >>>>> Color to be tracked
-#define MIN_H_BLUE 200
-#define MAX_H_BLUE 300
 #define MIN_H_RED 0
-#define MAX_H_RED 10
-// <<<<< Color to be tracked
+#define MAX_H_RED 9 // were found to be good values using trackbar
+//Blue: 200 to 300
+//Red: 0 to 10 and 160 to 180
+
+//Trackbar variables
+const int max_value_H = 360 / 2;
+const int max_value = 255;
+int low_H = 0;
+int high_H = max_value_H;
+static void on_low_H_thresh_trackbar(int, void *)
+{
+    low_H = min(high_H - 1, low_H);
+    cv::setTrackbarPos("Low H", "Threshold", low_H);
+}
+static void on_high_H_thresh_trackbar(int, void *)
+{
+    high_H = max(high_H, low_H + 1);
+    cv::setTrackbarPos("High H", "Threshold", high_H);
+}
 
 int main()
 {
@@ -117,6 +121,13 @@ int main()
 
     int notFoundCount = 0;
 
+    // ------- TRACKBARS -----
+    cv::namedWindow("Tracking");
+    cv::namedWindow("Threshold");
+    // Trackbars to set thresholds for HSV values
+    cv::createTrackbar("Low H", "Threshold", &low_H, max_value_H, on_low_H_thresh_trackbar);
+    cv::createTrackbar("High H", "Threshold", &high_H, max_value_H, on_high_H_thresh_trackbar);
+
     // >>>>> Main loop
     while (ch != 'q' && ch != 'Q')
     {
@@ -159,11 +170,12 @@ int main()
             cv::rectangle(res, predRect, CV_RGB(255, 0, 0), 2);
         }
 
-        // >>>>> Noise smoothing
+        // ---- SMOOTHEN NOISE ----
+        // Types of Filters: https://docs.opencv.org/3.1.0/d4/d13/tutorial_py_filtering.html
+        cv::Mat frame_blur1;
+        cv::GaussianBlur(frame, frame_blur1, cv::Size(5, 5), 3.0, 3.0);
         cv::Mat frame_blur;
-        cv::GaussianBlur(frame, frame_blur, cv::Size(5, 5), 3.0, 3.0);
-        // <<<<< Noise smoothing
-        //TODO: add medianframe_blur maybe?
+        cv::medianBlur(frame_blur1, frame_blur, 5);
 
         //------- HSV CONVERSION ----
         //convert BGR colourspace to HSV for later thresholding
@@ -179,16 +191,14 @@ int main()
 
         //inRange(FRAME_SOURCE, SCALAR_LOW, SCALAR_HIGH, FRAME_DEST)
         cv::inRange(frame_HSV, cv::Scalar(MIN_H_RED, 100, 100),
-                    cv::Scalar(MAX_H_RED, 255, 255), rangeRes); // Note: change parameters for different colors
-        //cv::inRange(frame_HSV, cv::Scalar(MIN_H_BLUE / 2, 100, 80),
-        //cv::Scalar(MAX_H_BLUE / 2, 255, 255), rangeRes);
+                    cv::Scalar(MAX_H_RED, 255, 255), rangeRes);
 
         // >>>>> Improving the result
         cv::erode(rangeRes, rangeRes, cv::Mat(), cv::Point(-1, -1), 2);
         cv::dilate(rangeRes, rangeRes, cv::Mat(), cv::Point(-1, -1), 2);
         // <<<<< Improving the result
 
-        // Thresholding viewing
+        // Threshold viewing
         cv::imshow("Threshold", rangeRes);
 
         // >>>>> Contours detection
@@ -218,7 +228,7 @@ int main()
         }
         // <<<<< Filtering
 
-        cout << "Balls found:" << ballsBox.size() << endl;
+        //cout << "Balls found:" << ballsBox.size() << endl;
 
         // >>>>> Detection result
         for (size_t i = 0; i < balls.size(); i++)
@@ -296,7 +306,6 @@ int main()
         // User key
         ch = cv::waitKey(1);
     }
-    // <<<<< Main loop
 
     return EXIT_SUCCESS;
 }
