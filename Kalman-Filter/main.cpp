@@ -49,11 +49,18 @@ int main()
     unsigned int type = CV_32F;
     cv::KalmanFilter kf(stateSize, measSize, contrSize, type);
 
+    //Defining the system at each instance 't'
     cv::Mat state(stateSize, 1, type); // [x,y,v_x,v_y,w,h]
-    cv::Mat meas(measSize, 1, type);   // [z_x,z_y,z_w,z_h]
+    //[centroid of the ball (x,y), speed of the centriod in pixel/sec (v_x, v_y), size of the bounding box (w, h)]
+
+    // The measure vector is used in UPDATE phase only if ball has been detected in current frame
+    cv::Mat meas(measSize, 1, type); // [z_x,z_y,z_w,z_h]
+    // [centroid of the identified ball, size of the bounding box of the identified ball]
+
     //cv::Mat procNoise(stateSize, 1, type)
     // [E_x,E_y,E_v_x,E_v_y,E_w,E_h]
 
+    // Linear model of the mocements of the ball
     // Transition State Matrix A
     // Note: set dT at each processing step!
     // [ 1 0 dT 0  0 0 ]
@@ -75,6 +82,7 @@ int main()
     kf.measurementMatrix.at<float>(16) = 1.0f;
     kf.measurementMatrix.at<float>(23) = 1.0f;
 
+    // to define the noise of the system - errors about the estimation of the state of the ball at each instant.
     // Process Noise Covariance Matrix Q
     // [ Ex   0   0     0     0    0  ]
     // [ 0    Ey  0     0     0    0  ]
@@ -94,18 +102,19 @@ int main()
     cv::setIdentity(kf.measurementNoiseCov, cv::Scalar(1e-1));
     // <<<< Kalman Filter
 
-    // Camera Index
-    int idx = 1;
-
     // Camera Capture
     cv::VideoCapture cap;
 
     // >>>>> Camera Settings
-    if (!cap.open(idx))
+    if (!cap.open(1)) // first external webcam
     {
-        cout << "Webcam not connected.\n"
-             << "Please verify\n";
-        return EXIT_FAILURE;
+        if (!cap.open(0)) // built-in webcam
+        {
+            cout << "Webcam not connected.\n"
+                 << "Please verify\n";
+
+            return EXIT_FAILURE;
+        }
     }
 
     cap.set(CV_CAP_PROP_FRAME_WIDTH, 1024);
@@ -134,6 +143,8 @@ int main()
         double precTick = ticks;
         ticks = (double)cv::getTickCount();
 
+        //dT is time elapsed between each iteration of this loop
+        // need for state estimation
         double dT = (ticks - precTick) / cv::getTickFrequency(); //seconds
 
         // Frame acquisition
@@ -142,7 +153,7 @@ int main()
         cv::Mat res;
         frame.copyTo(res);
 
-        if (found)
+        if (found) // ball was found in the previous iteration
         {
             // >>>> Matrix A
             kf.transitionMatrix.at<float>(2) = dT;
@@ -169,6 +180,8 @@ int main()
 
             cv::rectangle(res, predRect, CV_RGB(255, 0, 0), 2);
         }
+        // DETECTION PHASE:
+        //https://www.pyimagesearch.com/2015/09/14/ball-tracking-with-opencv/
 
         // ---- SMOOTHEN NOISE ----
         // Types of Filters: https://docs.opencv.org/3.1.0/d4/d13/tutorial_py_filtering.html
@@ -187,23 +200,30 @@ int main()
         //Thresholding in HSV is better than in RGB
         //https://docs.opencv.org/3.4/da/d97/tutorial_threshold_inRange.html
 
-        cv::Mat rangeRes = cv::Mat::zeros(frame.size(), CV_8UC1);
+        cv::Mat frame_detectionMask = cv::Mat::zeros(frame.size(), CV_8UC1);
 
+        //inRange returns a binary mask
         //inRange(FRAME_SOURCE, SCALAR_LOW, SCALAR_HIGH, FRAME_DEST)
         cv::inRange(frame_HSV, cv::Scalar(MIN_H_RED, 100, 100),
-                    cv::Scalar(MAX_H_RED, 255, 255), rangeRes);
+                    cv::Scalar(MAX_H_RED, 255, 255), frame_detectionMask);
 
-        // >>>>> Improving the result
-        cv::erode(rangeRes, rangeRes, cv::Mat(), cv::Point(-1, -1), 2);
-        cv::dilate(rangeRes, rangeRes, cv::Mat(), cv::Point(-1, -1), 2);
-        // <<<<< Improving the result
+        //--------- Morphological Filtering-------
+        // removes any small 'blips' left on the mask
+        cv::erode(frame_detectionMask, frame_detectionMask, cv::Mat(), cv::Point(-1, -1), 2);
+        cv::dilate(frame_detectionMask, frame_detectionMask, cv::Mat(), cv::Point(-1, -1), 2);
 
-        // Threshold viewing
-        cv::imshow("Threshold", rangeRes);
+        // Overlay mask on original image
+        /*
+        cv::Mat result;
+        cv::bitwise_and(frame, frame, result, frame_detectionMask);
+        */
+
+        // display the resultant detection/mask
+        cv::imshow("Threshold", frame_detectionMask);
 
         // >>>>> Contours detection
         vector<vector<cv::Point>> contours;
-        cv::findContours(rangeRes, contours, CV_RETR_EXTERNAL,
+        cv::findContours(frame_detectionMask, contours, CV_RETR_EXTERNAL,
                          CV_CHAIN_APPROX_NONE);
         // <<<<< Contours detection
 
