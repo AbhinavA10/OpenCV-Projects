@@ -4,3 +4,5 @@ https://towardsdatascience.com/finding-driving-lane-line-live-with-opencv-f17c26
 https://www.youtube.com/watch?v=CJMCoAsK-h0&list=PLQVvvaa0QuDdttJXlLtAJxJetJcqmqlQq&index=10
 
 I had done `sudo apt-get install python-opencv` to install opencv for python most likely
+
+https://www.hackster.io/kemfic/curved-lane-detection-34f771

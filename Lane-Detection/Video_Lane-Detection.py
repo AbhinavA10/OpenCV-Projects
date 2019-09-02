@@ -75,9 +75,9 @@ while (video_capture.isOpened()):
     if ret: #if read was sucessful
         output = processImage(frame) #detect the lanes using our function
         cv2.imshow('Lane Detection - Frame',output) #show our image to the screen
-	if cv2.waitKey(1) & 0xFF == ord('p'): #waitkey(1) means wait for 1ms. This allows the Frame by Frame processing
+        if cv2.waitKey(1) & 0xFF == ord('p'): #waitkey(1) means wait for 1ms. This allows the Frame by Frame processing
             cv2.waitKey(0)        
-	elif cv2.waitKey(1) & 0xFF == ord('q'): #waitkey(1) means wait for 1ms. This allows the Frame by Frame processing
+        elif cv2.waitKey(1) & 0xFF == ord('q'): #waitkey(1) means wait for 1ms. This allows the Frame by Frame processing
             break
     else:
         break

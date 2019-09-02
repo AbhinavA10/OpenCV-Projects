@@ -31,3 +31,5 @@ CTestTestfile.cmake
 _deps
 OpenCVKF
 OpenCVKF.cbp
+
+venv/
