@@ -12,7 +12,7 @@ def perspective_warp(img,
                      dst_size=(1280,720),
                      src=np.float32([(0.43,0.65),(0.58,0.65),(0.1,1),(1,1)]),
                      #dst=np.float32([(0.43,0), (0.58, 0), (0.43,1), (0.58,1)])): # to visualize full birds eye view warp
-                     dst=np.float32([(0,0), (1, 0), (0,1), (1,1)])):
+                     dst=np.float32([(0,0), (1, 0), (0,1), (1,1)])): # we isolate reigon of interest in the perspective transform itself
                      #points defined in x,y from x bottom right corner, y top left
     """Perspective Warp
     Turns a camera view, into a bird's eye view

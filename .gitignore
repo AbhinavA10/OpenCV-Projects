@@ -33,3 +33,4 @@ OpenCVKF
 OpenCVKF.cbp
 
 venv/
+__pycache__/
