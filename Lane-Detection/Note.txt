@@ -1,2 +1,0 @@
-Had to install:
-sudo apt-get install python3-tk
